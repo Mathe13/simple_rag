@@ -23,14 +23,39 @@ st.markdown("Ask me anything about hp products.")
 # Session State Initialization
 # ==========================================
 if "token" not in st.session_state:
-    # Auto-login to SSO Mock on session start
-    try:
-        login_resp = requests.post(SSO_URL, json={"username": "tech-support-agent", "password": "password"})
-        login_resp.raise_for_status()
-        st.session_state.token = login_resp.json().get("access_token")
-    except Exception as e:
-        st.error(f"Failed to authenticate with Enterprise SSO: {e}")
+    st.session_state.token = None
+
+if not st.session_state.token:
+    st.subheader("Login to Access the Agent")
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submit_button = st.form_submit_button("Login")
+        
+        if submit_button:
+            if not username or not password:
+                st.warning("Please enter both username and password.")
+            else:
+                try:
+                    login_resp = requests.post(SSO_URL, json={"username": username, "password": password})
+                    login_resp.raise_for_status()
+                    st.session_state.token = login_resp.json().get("access_token")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Authentication failed. Please check your credentials and try again.")
+    
+    # Halt execution here if not logged in so we don't render the chat UI
+    st.stop()
+    
+# User is logged in, show logout button in sidebar
+with st.sidebar:
+    if st.button("Logout"):
         st.session_state.token = None
+        st.session_state.conversation_id = None
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Hello! How can I help you with your HP devices today?"}
+        ]
+        st.rerun()
 
 if "conversation_id" not in st.session_state:
     # Initially None, will be populated by the backend after the first message
