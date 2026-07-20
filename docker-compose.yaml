@@ -1,0 +1,170 @@
+version: '3.8'
+
+# ------------------------------------------------------------------------------
+# YAML Anchor: Base configurations shared by all Airflow services
+# ------------------------------------------------------------------------------
+x-airflow-common: &airflow-common
+  build:
+    context: ./airflow
+  environment:
+    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:admin@postgres:5432/hp_rag_db
+    - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    - AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlOpXoG0H600XJCmZ9zXkM= # Static key for testing
+  group_add:
+    - "995" # Allow airflow user to access docker socket
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./data:/opt/data # Maps HP PDFs into Airflow
+    - /var/run/docker.sock:/var/run/docker.sock
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  # ==========================================
+  # 1. Unified Database (Relational + Vector)
+  # ==========================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: hp_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=hp_rag_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d hp_rag_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # 2. Corporate Infrastructure Mocks
+  # ==========================================
+  enterprise-mocks:
+    build:
+      context: ./enterprise-mocks
+    container_name: hp_enterprise_mocks
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+
+  # ==========================================
+  # 3. Backend (FastAPI + Langchain)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+    container_name: hp_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:admin@postgres:5432/hp_rag_db
+      - MOCK_VAULT_URL=http://enterprise-mocks:8001/vault
+      - MOCK_SSO_URL=http://enterprise-mocks:8001/sso
+      - OPENAI_BASE_URL=http://model-server:8080/v1
+      - OPENAI_API_KEY=sk-local-dev-key
+      - EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+      - CHAT_MODEL=meta-llama/Llama-3.2-1B-Instruct
+    depends_on:
+      postgres:
+        condition: service_healthy
+      enterprise-mocks:
+        condition: service_started
+
+  # ==========================================
+  # 4. Frontend (Streamlit / Chainlit)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+    container_name: hp_frontend
+    restart: always
+    ports:
+      - "8501:8501" # Default Streamlit port (change to 8000 if using Chainlit for UI)
+    environment:
+      - BACKEND_API_URL=http://backend:8000
+      - SSO_URL=http://enterprise-mocks:8001/sso/token
+    depends_on:
+      - backend
+      - enterprise-mocks
+
+  # ==========================================
+  # 5. Airflow: Database Initialization (Runs once and dies)
+  # ==========================================
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow_init
+    # Executes database migration and creates Airflow admin user
+    entrypoint: >
+      bash -c "
+        airflow db migrate &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+      "
+
+  # ==========================================
+  # 6. Airflow: Web Interface
+  # ==========================================
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: hp_airflow_webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ==========================================
+  # 7. Airflow: Scheduler (Executes DAGs)
+  # ==========================================
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow_scheduler
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ==========================================
+  # 8. Worker Image (For building only)
+  # ==========================================
+  worker-image:
+    build:
+      context: ./worker
+    image: simple_rag_worker:latest
+    profiles: ["donotstart"]
+
+  # ==========================================
+  # 9. Local Model Server
+  # ==========================================
+  model-server:
+    build:
+      context: ./model-server
+    container_name: local_model_server
+    restart: always
+    ports:
+      - "9000:8080"
+    environment:
+      - MODEL_API_KEY=sk-local-dev-key
+    volumes:
+      - model_cache:/models
+      - huggingface_cache:/root/.cache/huggingface
+
+volumes:
+  postgres_data:
+  model_cache:
+  huggingface_cache:
