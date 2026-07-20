@@ -17,7 +17,6 @@ async def test_chat_endpoint(mock_get_rag_chain, async_client):
     
     # Make request
     payload = {
-        "user_id": "user123",
         "query": "How do I print a test page?"
     }
     response = await async_client.post("/api/chat", json=payload)
@@ -32,7 +31,6 @@ async def test_chat_endpoint(mock_get_rag_chain, async_client):
     
     # Second request with conversation_id
     payload_2 = {
-        "user_id": "user123",
         "conversation_id": data["conversation_id"],
         "query": "Follow up question?"
     }
@@ -49,7 +47,6 @@ async def test_chat_endpoint_exception(mock_get_rag_chain, async_client):
     mock_get_rag_chain.return_value = mock_chain
     
     payload = {
-        "user_id": "user123",
         "query": "Fail me"
     }
     response = await async_client.post("/api/chat", json=payload)

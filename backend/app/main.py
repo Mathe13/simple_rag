@@ -11,6 +11,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from backend.app.core.config import settings
 from backend.app.db.models import Base, Conversation, Message
 from backend.app.services.rag_chain import get_rag_chain
+from backend.app.core.auth import get_current_user
 
 # Database Setup (SQLAlchemy Async)
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
@@ -25,7 +26,6 @@ app = FastAPI(title=settings.PROJECT_NAME)
 
 # Pydantic Schemas for Requests/Responses
 class ChatRequest(BaseModel):
-    user_id: str
     conversation_id: Optional[str] = None
     query: str
 
@@ -40,7 +40,11 @@ async def startup_event():
         await conn.run_sync(Base.metadata.create_all)
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat_endpoint(
+    request: ChatRequest, 
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Main RAG endpoint.
     1. Fetches or creates a conversation.
@@ -51,7 +55,7 @@ async def chat_endpoint(request: ChatRequest, db: AsyncSession = Depends(get_db)
     # 1. Handle Conversation ID
     conv_id = request.conversation_id
     if not conv_id:
-        new_conv = Conversation(user_id=request.user_id)
+        new_conv = Conversation(user_id=current_user)
         db.add(new_conv)
         await db.commit()
         await db.refresh(new_conv)

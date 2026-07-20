@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHAT_MODEL: str = "gpt-3.5-turbo"
     
+    JWT_SECRET: str = "super-secret-mock-key-for-local-testing"
+    JWT_ALGORITHM: str = "HS256"
+    SSO_TOKEN_URL: str = "http://enterprise-mocks:8001/sso/token"
+    
     def load_secrets_from_vault(self):
         """Fetches the OpenAI key from the Mock Vault on startup"""
         if self.OPENAI_BASE_URL and self.OPENAI_API_KEY:

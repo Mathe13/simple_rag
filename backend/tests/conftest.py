@@ -28,6 +28,10 @@ def override_get_db(db_session):
     async def _override_get_db():
         yield db_session
     app.dependency_overrides[get_db] = _override_get_db
+    
+    from backend.app.core.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: "test_user123"
+    
     yield
     app.dependency_overrides.clear()
 
