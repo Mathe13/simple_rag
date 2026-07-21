@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -32,6 +33,16 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     conversation_id: str
     answer: str
+
+class ConversationResponse(BaseModel):
+    id: str
+    created_at: datetime
+
+class MessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: datetime
 
 @app.on_event("startup")
 async def startup_event():
@@ -96,6 +107,39 @@ async def chat_endpoint(
     await db.commit()
 
     return ChatResponse(conversation_id=conv_id, answer=answer_text)
+
+@app.get("/api/conversations", response_model=List[ConversationResponse])
+async def list_conversations(
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.user_id == current_user)
+        .order_by(Conversation.created_at.desc())
+    )
+    return result.scalars().all()
+
+@app.get("/api/conversations/{conversation_id}/messages", response_model=List[MessageResponse])
+async def list_messages(
+    conversation_id: str,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify ownership
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = result.scalars().first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if conv.user_id != current_user:
+        raise HTTPException(status_code=403, detail="Not authorized to access this conversation")
+        
+    result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    )
+    return result.scalars().all()
 
 @app.get("/api/health")
 async def health_check():

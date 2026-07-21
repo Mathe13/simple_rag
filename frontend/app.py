@@ -9,6 +9,22 @@ BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000")
 SSO_URL = os.getenv("SSO_URL", "http://localhost:8001/sso/token")
 CHAT_ENDPOINT = f"{BACKEND_API_URL}/api/chat"
 
+def fetch_conversations(token):
+    try:
+        resp = requests.get(f"{BACKEND_API_URL}/api/conversations", headers={"Authorization": f"Bearer {token}"})
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:
+        return []
+
+def fetch_messages(token, conv_id):
+    try:
+        resp = requests.get(f"{BACKEND_API_URL}/api/conversations/{conv_id}/messages", headers={"Authorization": f"Bearer {token}"})
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:
+        return []
+
 # Page Configuration
 st.set_page_config(
     page_title="HP Technical Support Agent",
@@ -49,7 +65,37 @@ if not st.session_state.token:
     
 # User is logged in, show logout button in sidebar
 with st.sidebar:
-    if st.button("Logout"):
+    st.header("Chat History")
+    if st.button("➕ New Chat", use_container_width=True):
+        st.session_state.conversation_id = None
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your HP devices today?"}]
+        st.rerun()
+        
+    st.divider()
+    
+    # Render past conversations
+    conversations = fetch_conversations(st.session_state.token)
+    if not conversations:
+        st.info("No past chats.")
+    else:
+        for conv in conversations:
+            # Format datetime or fallback to ID
+            created = conv.get("created_at", "")[:10]
+            label = f"Chat {conv['id'][:8]} ({created})"
+            if st.button(label, key=conv['id'], use_container_width=True):
+                st.session_state.conversation_id = conv['id']
+                msgs = fetch_messages(st.session_state.token, conv['id'])
+                if msgs:
+                    st.session_state.messages = [
+                        {"role": m["role"], "content": m["content"]} for m in msgs
+                    ]
+                else:
+                    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your HP devices today?"}]
+                st.rerun()
+                
+    st.divider()
+    
+    if st.button("Logout", type="primary", use_container_width=True):
         st.session_state.token = None
         st.session_state.conversation_id = None
         st.session_state.messages = [
