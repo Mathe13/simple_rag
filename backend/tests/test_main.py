@@ -6,7 +6,10 @@ from unittest.mock import patch, MagicMock
 @pytest.fixture(autouse=True)
 def mock_env_vars():
     original_keys = {}
-    
+
+    # Turn off LangSmith tracing
+    os.environ["LANGCHAIN_TRACING_V2"] = "false"
+
     # Ensure OpenAI key exists and is not empty
     if not os.environ.get("OPENAI_API_KEY"):
         original_keys["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY")
@@ -34,6 +37,29 @@ def mock_pgvector():
         mock_instance.similarity_search_with_score.return_value = []
         mock_pgv.return_value = mock_instance
         yield mock_pgv
+
+@pytest.fixture(autouse=True)
+def mock_background_tasks():
+    from fastapi import BackgroundTasks
+    with patch.object(BackgroundTasks, "add_task"):
+        yield
+
+@pytest.fixture(autouse=True)
+def mock_run_in_threadpool():
+    async def mock_run(func, *args, **kwargs):
+        return func(*args, **kwargs)
+        
+    with patch("backend.app.main.run_in_threadpool", new=mock_run):
+        yield
+
+@pytest.fixture(autouse=True)
+def mock_openai_embeddings():
+    """
+    Previne que o LangChain instancie clientes HTTP reais no background,
+    o que trava o encerramento do event loop do pytest.
+    """
+    with patch("backend.app.main.OpenAIEmbeddings") as mock_emb:
+        yield mock_emb
 
 @pytest.mark.asyncio
 async def test_health_check(async_client):

@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -40,3 +41,14 @@ async def async_client(override_get_db):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def cleanup_database_engine():
+    """
+    Garante que o pool de conexões do SQLAlchemy seja fechado 
+    corretamente após a execução de todos os testes.
+    """
+    yield  # Deixa os testes rodarem
+    
+    # Destrói as conexões e libera o Event Loop
+    await engine.dispose()
