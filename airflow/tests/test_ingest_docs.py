@@ -36,7 +36,7 @@ mock_docker_types.Mount = MagicMock()
 sys.modules['docker'] = MagicMock()
 sys.modules['docker.types'] = mock_docker_types
 
-from ingest_docs import dag, ingestion_task
+from dags.ingest_docs import dag, ingestion_task
 
 def test_dag_loaded():
     assert dag is not None
