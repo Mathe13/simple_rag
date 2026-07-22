@@ -189,3 +189,27 @@ async def test_get_messages_unauthorized(mock_get_rag_chain, async_client):
     
     # Reset override
     app.dependency_overrides[get_current_user] = lambda: "test_user123"
+
+@pytest.mark.asyncio
+@patch("backend.app.main.get_rag_chain")
+async def test_delete_conversation(mock_get_rag_chain, async_client):
+    # Mock the RAG chain
+    mock_chain = MagicMock()
+    mock_chain.invoke.return_value = {"answer": "Mocked"}
+    mock_get_rag_chain.return_value = mock_chain
+    
+    # Create a conversation by chatting
+    res1 = await async_client.post("/api/chat", json={"query": "Q1"})
+    conv_id = res1.json()["conversation_id"]
+    
+    # Verify it exists in GET
+    res2 = await async_client.get("/api/conversations")
+    assert conv_id in [c["id"] for c in res2.json()]
+    
+    # Delete it
+    res3 = await async_client.delete(f"/api/conversations/{conv_id}")
+    assert res3.status_code == 200
+    
+    # Verify it's no longer in GET
+    res4 = await async_client.get("/api/conversations")
+    assert conv_id not in [c["id"] for c in res4.json()]

@@ -25,6 +25,14 @@ def fetch_messages(token, conv_id):
     except Exception:
         return []
 
+def delete_conversation(token, conv_id):
+    try:
+        resp = requests.delete(f"{BACKEND_API_URL}/api/conversations/{conv_id}", headers={"Authorization": f"Bearer {token}"})
+        resp.raise_for_status()
+        return True
+    except Exception:
+        return False
+
 # Page Configuration
 st.set_page_config(
     page_title="HP Technical Support Agent",
@@ -82,16 +90,27 @@ with st.sidebar:
             # Format datetime or fallback to ID
             created = conv.get("created_at", "")[:10]
             label = f"Chat {conv['id'][:8]} ({created})"
-            if st.button(label, key=conv['id'], use_container_width=True):
-                st.session_state.conversation_id = conv['id']
-                msgs = fetch_messages(st.session_state.token, conv['id'])
-                if msgs:
-                    st.session_state.messages = [
-                        {"role": m["role"], "content": m["content"]} for m in msgs
-                    ]
-                else:
-                    st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your HP devices today?"}]
-                st.rerun()
+            
+            col1, col2 = st.columns([0.85, 0.15])
+            with col1:
+                if st.button(label, key=f"btn_{conv['id']}", use_container_width=True):
+                    st.session_state.conversation_id = conv['id']
+                    msgs = fetch_messages(st.session_state.token, conv['id'])
+                    if msgs:
+                        st.session_state.messages = [
+                            {"role": m["role"], "content": m["content"]} for m in msgs
+                        ]
+                    else:
+                        st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your HP devices today?"}]
+                    st.rerun()
+            with col2:
+                if st.button("🗑️", key=f"del_{conv['id']}", use_container_width=True):
+                    success = delete_conversation(st.session_state.token, conv['id'])
+                    if success:
+                        if st.session_state.conversation_id == conv['id']:
+                            st.session_state.conversation_id = None
+                            st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your HP devices today?"}]
+                        st.rerun()
                 
     st.divider()
     

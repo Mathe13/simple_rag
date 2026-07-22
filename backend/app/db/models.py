@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, func
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, func, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 from uuid import uuid4
 
@@ -13,6 +13,7 @@ class Conversation(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_visible = Column(Boolean, default=True, nullable=False)
     
     # Relationship to messages
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")

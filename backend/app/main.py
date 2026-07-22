@@ -204,6 +204,7 @@ async def list_conversations(
     result = await db.execute(
         select(Conversation)
         .where(Conversation.user_id == current_user)
+        .where(Conversation.is_visible == True)
         .order_by(Conversation.created_at.desc())
     )
     return result.scalars().all()
@@ -232,3 +233,20 @@ async def list_messages(
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conv = result.scalars().first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if conv.user_id != current_user:
+        raise HTTPException(status_code=403, detail="Not authorized to access this conversation")
+        
+    conv.is_visible = False
+    await db.commit()
+    return {"status": "success"}
