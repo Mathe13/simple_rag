@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.020" timestamp="2026-07-21T22:49:51.936153-03:00" hostname="matheus-Inspiron-15-5510"><testcase classname="tests.test_ingest_docs" name="test_dag_loaded" time="0.001" /></testsuite></testsuites>
