@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, Header, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timezone
+import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -25,6 +26,20 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+
+_semantic_cache = None
+
+def get_semantic_cache():
+    global _semantic_cache
+    if _semantic_cache is None:
+        embeddings = OpenAIEmbeddings(model=settings.EMBEDDING_MODEL)
+        _semantic_cache = PGVector(
+            embeddings=embeddings,
+            collection_name="semantic_cache",
+            connection=settings.VECTOR_DB_URL,
+            use_jsonb=True
+        )
+    return _semantic_cache
 
 # FastAPI Initialization
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -53,6 +68,15 @@ async def startup_event():
     # Create tables if they don't exist
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+    # Start background task for pruning semantic cache
+    asyncio.create_task(periodic_prune())
+
+async def periodic_prune():
+    while True:
+        await asyncio.sleep(settings.SEMANTIC_CACHE_TTL_HOURS * 3600)
+        async with AsyncSessionLocal() as db:
+            await prune_semantic_cache(db)
 
 async def prune_semantic_cache(db: AsyncSession):
     try:
@@ -88,7 +112,6 @@ async def prune_semantic_cache(db: AsyncSession):
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(
     request: ChatRequest, 
-    background_tasks: BackgroundTasks,
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     x_mock_request: Optional[str] = Header(None)
@@ -126,13 +149,7 @@ async def chat_endpoint(
             chat_history.append(AIMessage(content=msg.content))
 
     # Initialize Semantic Cache
-    embeddings = OpenAIEmbeddings(model=settings.EMBEDDING_MODEL)
-    semantic_cache = PGVector(
-        embeddings=embeddings,
-        collection_name="semantic_cache",
-        connection=settings.VECTOR_DB_URL,
-        use_jsonb=True
-    )
+    semantic_cache = get_semantic_cache()
 
     # 3. Cache Hit Logic (Pre-LLM)
     try:
@@ -181,8 +198,6 @@ async def chat_endpoint(
             semantic_cache.add_documents,
             [Document(page_content=request.query, metadata={"answer": answer_text, "created_at": datetime.now(timezone.utc).isoformat()})]
         )
-        
-        background_tasks.add_task(prune_semantic_cache, db)
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")

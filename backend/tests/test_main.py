@@ -38,11 +38,7 @@ def mock_pgvector():
         mock_pgv.return_value = mock_instance
         yield mock_pgv
 
-@pytest.fixture(autouse=True)
-def mock_background_tasks():
-    from fastapi import BackgroundTasks
-    with patch.object(BackgroundTasks, "add_task"):
-        yield
+
 
 @pytest.fixture(autouse=True)
 def mock_run_in_threadpool():

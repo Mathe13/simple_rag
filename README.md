@@ -18,7 +18,7 @@ graph TD
     API1 & API2 & API3 --> MS[Local Model Server]
     API1 & API2 & API3 --> Mocks[Enterprise SSO & Vault Mocks]
     
-    Airflow[Airflow Ingestion DAG] --> DB
+    Airflow[Airflow Ingestion DAG] --> Worker
     Worker[Worker Ingest Script] --> DB
 ```
 

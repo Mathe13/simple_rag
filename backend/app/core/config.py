@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     CHAT_MODEL: str = "gpt-3.5-turbo"
     
     SEMANTIC_CACHE_TTL_HOURS: int = 1
-    SEMANTIC_CACHE_MAX_SIZE: int = 10
+    SEMANTIC_CACHE_MAX_SIZE: int = 1000
     
     JWT_SECRET: str = "super-secret-mock-key-for-local-testing"
     JWT_ALGORITHM: str = "HS256"
