@@ -1,5 +1,39 @@
 import pytest
+import os
 from unittest.mock import patch, MagicMock
+
+# Mock environment variables needed for Pydantic validation
+@pytest.fixture(autouse=True)
+def mock_env_vars():
+    original_keys = {}
+    
+    # Ensure OpenAI key exists and is not empty
+    if not os.environ.get("OPENAI_API_KEY"):
+        original_keys["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY")
+        os.environ["OPENAI_API_KEY"] = "dummy-key-for-testing"
+    
+    # Ensure vector DB URL exists
+    if not os.environ.get("VECTOR_DB_URL"):
+        original_keys["VECTOR_DB_URL"] = os.environ.get("VECTOR_DB_URL")
+        os.environ["VECTOR_DB_URL"] = "postgresql+psycopg://dummy:dummy@localhost/dummy"
+    
+    yield
+    
+    # Cleanup
+    for key, value in original_keys.items():
+        if value is None:
+            if key in os.environ:
+                del os.environ[key]
+        else:
+            os.environ[key] = value
+
+@pytest.fixture(autouse=True)
+def mock_pgvector():
+    with patch("backend.app.main.PGVector") as mock_pgv:
+        mock_instance = MagicMock()
+        mock_instance.similarity_search_with_score.return_value = []
+        mock_pgv.return_value = mock_instance
+        yield mock_pgv
 
 @pytest.mark.asyncio
 async def test_health_check(async_client):

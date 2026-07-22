@@ -5,15 +5,18 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from backend.app.core.config import settings
 
-def get_rag_chain():
+def get_rag_chain(mock_request: bool = False):
     """
     Constructs the LangChain retrieval pipeline.
     It includes a history-aware retriever to contextualize follow-up questions.
     """
+    default_headers = {"x-mock-request": "true"} if mock_request else None
+    
     # 1. Initialize Vector Store
     embeddings = OpenAIEmbeddings(
         model=settings.EMBEDDING_MODEL,
-        base_url=settings.OPENAI_BASE_URL if settings.OPENAI_BASE_URL else None
+        base_url=settings.OPENAI_BASE_URL if settings.OPENAI_BASE_URL else None,
+        default_headers=default_headers
     )
     
     vector_store = PGVector(
@@ -30,7 +33,8 @@ def get_rag_chain():
     llm = ChatOpenAI(
         model=settings.CHAT_MODEL,
         temperature=0,
-        base_url=settings.OPENAI_BASE_URL if settings.OPENAI_BASE_URL else None
+        base_url=settings.OPENAI_BASE_URL if settings.OPENAI_BASE_URL else None,
+        default_headers=default_headers
     )
 
     # 3. Contextualize Question Prompt (Handles Chat History)

@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException, Security, Header
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 from typing import List, Optional, Union, Any
@@ -45,7 +45,32 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 512
 
 @app.post("/v1/embeddings", dependencies=[Depends(get_api_key)])
-async def create_embeddings(req: EmbeddingRequest):
+async def create_embeddings(req: EmbeddingRequest, x_mock_request: Optional[str] = Header(None)):
+    if x_mock_request == "true":
+        # Return mock embeddings for load testing
+        inputs_len = 1
+        if isinstance(req.input, list):
+            if len(req.input) > 0 and isinstance(req.input[0], list):
+                inputs_len = len(req.input)
+            elif len(req.input) > 0 and isinstance(req.input[0], str):
+                inputs_len = len(req.input)
+                
+        data = []
+        for i in range(inputs_len):
+            embedding = [0.0] * 384
+            embedding[0] = 1.0
+            data.append({
+                "object": "embedding",
+                "embedding": embedding,
+                "index": i
+            })
+        return {
+            "object": "list",
+            "data": data,
+            "model": req.model,
+            "usage": {"prompt_tokens": 0, "total_tokens": 0}
+        }
+
     inputs = req.input
     
     # Handle single string
@@ -78,7 +103,24 @@ async def create_embeddings(req: EmbeddingRequest):
     }
 
 @app.post("/v1/chat/completions", dependencies=[Depends(get_api_key)])
-async def create_chat_completion(req: ChatCompletionRequest):
+async def create_chat_completion(req: ChatCompletionRequest, x_mock_request: Optional[str] = Header(None)):
+    if x_mock_request == "true":
+        return {
+            "id": "mock-chatcmpl",
+            "object": "chat.completion",
+            "created": 1234567890,
+            "model": req.model,
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "This is a mock answer for load testing."
+                },
+                "finish_reason": "stop"
+            }],
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        }
+
     # Convert messages to llama-cpp format
     formatted_messages = [{"role": msg.role, "content": msg.content} for msg in req.messages]
     

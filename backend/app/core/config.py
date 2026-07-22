@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHAT_MODEL: str = "gpt-3.5-turbo"
     
+    SEMANTIC_CACHE_TTL_HOURS: int = 1
+    SEMANTIC_CACHE_MAX_SIZE: int = 10
+    
     JWT_SECRET: str = "super-secret-mock-key-for-local-testing"
     JWT_ALGORITHM: str = "HS256"
     SSO_TOKEN_URL: str = "http://enterprise-mocks:8001/sso/token"

@@ -1,13 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header, BackgroundTasks
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings
+from langchain_postgres import PGVector
 
 from backend.app.core.config import settings
 from backend.app.db.models import Base, Conversation, Message
@@ -50,11 +54,44 @@ async def startup_event():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+async def prune_semantic_cache(db: AsyncSession):
+    try:
+        # Delete Expired Entries
+        expired_sql = text(
+            f"""
+            DELETE FROM langchain_pg_embedding 
+            WHERE collection_id = (SELECT uuid FROM langchain_pg_collection WHERE name = 'semantic_cache') 
+            AND (cmetadata->>'created_at')::timestamptz < NOW() - INTERVAL '{settings.SEMANTIC_CACHE_TTL_HOURS} hours'
+            """
+        )
+        await db.execute(expired_sql)
+        
+        # Enforce Max Size
+        size_sql = text(
+            f"""
+            DELETE FROM langchain_pg_embedding
+            WHERE collection_id = (SELECT uuid FROM langchain_pg_collection WHERE name = 'semantic_cache') 
+            AND id NOT IN (
+                SELECT id FROM langchain_pg_embedding 
+                WHERE collection_id = (SELECT uuid FROM langchain_pg_collection WHERE name = 'semantic_cache')
+                ORDER BY cmetadata->>'created_at' DESC 
+                LIMIT {settings.SEMANTIC_CACHE_MAX_SIZE}
+            )
+            """
+        )
+        await db.execute(size_sql)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        print(f"Error pruning semantic cache: {e}")
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(
     request: ChatRequest, 
+    background_tasks: BackgroundTasks,
     current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    x_mock_request: Optional[str] = Header(None)
 ):
     """
     Main RAG endpoint.
@@ -88,18 +125,69 @@ async def chat_endpoint(
         elif msg.role == "assistant":
             chat_history.append(AIMessage(content=msg.content))
 
-    # 3. Call the RAG Chain
-    rag_chain = get_rag_chain()
+    # Initialize Semantic Cache
+    embeddings = OpenAIEmbeddings(model=settings.EMBEDDING_MODEL)
+    semantic_cache = PGVector(
+        embeddings=embeddings,
+        collection_name="semantic_cache",
+        connection=settings.VECTOR_DB_URL,
+        use_jsonb=True
+    )
+
+    # 3. Cache Hit Logic (Pre-LLM)
+    try:
+        docs_with_scores = await run_in_threadpool(
+            semantic_cache.similarity_search_with_score,
+            request.query,
+            k=1
+        )
+        if docs_with_scores and docs_with_scores[0][1] < 0.05:
+            matched_doc, distance = docs_with_scores[0]
+            cached_answer = matched_doc.metadata.get("answer")
+            created_at_str = matched_doc.metadata.get("created_at")
+            
+            # TTL Validation (e.g., 24 hours)
+            is_valid_cache = True
+            if created_at_str:
+                created_at = datetime.fromisoformat(created_at_str)
+                time_diff = datetime.now(timezone.utc) - created_at
+                if time_diff.total_seconds() > (settings.SEMANTIC_CACHE_TTL_HOURS * 3600):
+                    is_valid_cache = False
+            
+            if cached_answer and is_valid_cache:
+                # Save to history without the [CACHED] tag to keep DB clean
+                user_msg = Message(conversation_id=conv_id, role="user", content=request.query)
+                ai_msg = Message(conversation_id=conv_id, role="assistant", content=cached_answer)
+                db.add_all([user_msg, ai_msg])
+                await db.commit()
+                
+                # Return with [CACHED] tag for frontend visibility
+                return ChatResponse(conversation_id=conv_id, answer=f"[CACHED] {cached_answer}")
+    except Exception as e:
+        await db.rollback()
+        pass
+
+    # 4. Cache Miss Logic: Call the RAG Chain
+    rag_chain = get_rag_chain(mock_request=(x_mock_request == "true"))
     try:
         response = rag_chain.invoke({
             "input": request.query,
             "chat_history": chat_history
         })
         answer_text = response["answer"]
+
+        # Cache Insertion
+        await run_in_threadpool(
+            semantic_cache.add_documents,
+            [Document(page_content=request.query, metadata={"answer": answer_text, "created_at": datetime.now(timezone.utc).isoformat()})]
+        )
+        
+        background_tasks.add_task(prune_semantic_cache, db)
     except Exception as e:
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
-    # 4. Save the new messages to the database
+    # 5. Save the new messages to the database
     user_msg = Message(conversation_id=conv_id, role="user", content=request.query)
     ai_msg = Message(conversation_id=conv_id, role="assistant", content=answer_text)
     
