@@ -1,0 +1,152 @@
+[
+    {
+        "question": "What processors are available for the OMEN 17.3 inch Gaming Laptop PC?",
+        "ground_truth": "The available processors are the AMD Ryzen 9 8945HS, AMD Ryzen 7 8845HS, and AMD Ryzen 5 8645HS.[cite: 1]",
+        "suggested_context": "Processors: AMD Ryzen™ processors. AMD Ryzen 9 8945HS (4.0 GHz, up to 5.2 GHz, 8 cores, 16 MB L3 cache, 35 W). AMD Ryzen 7 8845HS (3.8 GHz, up to 5.1 GHz, 8 cores, 16 MB L3 cache, 35 W). AMD Ryzen 5 8645HS (4.3 GHz, up to 5.0 GHz, 6 cores, 16 MB L3 cache, 35 W).[cite: 1]"
+    },
+    {
+        "question": "What discrete graphics options are available for the OMEN 17.3 inch laptop?",
+        "ground_truth": "The laptop supports NVIDIA GeForce RTX 4070 8 GB, NVIDIA GeForce RTX 4060 8 GB, and NVIDIA GeForce RTX 4050 6 GB discrete graphics.[cite: 1]",
+        "suggested_context": "Discrete graphics: NVIDIA GeForce RTX™ 4070 8 GB. NVIDIA GeForce RTX 4060 8 GB. NVIDIA GeForce RTX 4050 6 GB.[cite: 1]"
+    },
+    {
+        "question": "What are the memory configuration options for the OMEN 17-db0xxx?",
+        "ground_truth": "The laptop supports up to 32 GB (16 x 2) and 16 GB (8 x 2) of DDR5-5600 dual-channel memory across two SODIMM slots.[cite: 1]",
+        "suggested_context": "Memory: Two SODIMM slots, dual-channel support. DDR5-5600, 1.1 v. Supports the following configurations: 32 GB (16 x 2). 16 GB (8x2).[cite: 1]"
+    },
+    {
+        "question": "What does the blinking amber AC adapter and battery light indicate?",
+        "ground_truth": "A blinking amber light indicates that the AC adapter is disconnected and the battery has reached a low battery level.[cite: 1]",
+        "suggested_context": "AC adapter and battery light: Blinking amber. The AC adapter is disconnected and the battery has reached a low battery level.[cite: 1]"
+    },
+    {
+        "question": "How do you turn on the touchpad if it is currently off?",
+        "ground_truth": "Select the Search icon in the taskbar, type \"touchpad settings\", press enter, and use an external mouse to click the touchpad button. If an external mouse is not available, press the Tab key repeatedly until the pointer rests on the touchpad button, then press the spacebar.[cite: 1]",
+        "suggested_context": "Turning on the touchpad: Follow these steps to turn on the touchpad. 1. Select the Search icon in the taskbar, type touchpad settings in the search box, and then press enter. 2. Using an external mouse, click the touchpad button. If you are not using an external mouse, press the Tab key repeatedly until the pointer rests on the touchpad button. Then press the spacebar to select the button.[cite: 1]"
+    },
+    {
+        "question": "What is the recommended solution for cleaning the computer with a disinfectant?",
+        "ground_truth": "HP recommends an alcohol solution consisting of 70% isopropyl alcohol and 30% water.[cite: 1]",
+        "suggested_context": "A disinfectant that is within HP's cleaning guidelines is an alcohol solution consisting of 70% isopropyl alcohol and 30% water.[cite: 1]"
+    },
+    {
+        "question": "Where can you locate the service label on the OMEN 17 laptop?",
+        "ground_truth": "The service label can be found on the bottom of the computer, inside the battery bay, under the service door, on the back of the display, or on the bottom of a tablet kickstand.[cite: 1]",
+        "suggested_context": "Check the following locations for the labels described in this section: the bottom of the computer, inside the battery bay, under the service door, on the back of the display, or on the bottom of a tablet kickstand.[cite: 1]"
+    },
+    {
+        "question": "How do you start the Setup Utility (BIOS) on the laptop?",
+        "ground_truth": "You can either turn on or restart the computer and quickly press f10, or quickly press esc and then press f10 when the Start menu is displayed.[cite: 1]",
+        "suggested_context": "Starting Setup Utility (BIOS): Turn on or restart the computer and quickly press f10. Turn on or restart the computer, quickly press esc, and then press f10 when the Start menu is displayed.[cite: 1]"
+    },
+    {
+        "question": "What is the spare part number for the 6-cell, 83 Whr battery?",
+        "ground_truth": "The spare part number for the 6-cell, 83 Whr battery is P04861-001.[cite: 1]",
+        "suggested_context": "Battery (6 cell, 83 Whr) spare part number: P04861-001.[cite: 1]"
+    },
+    {
+        "question": "What action should you take before removing a solid-state drive to prevent loss of information?",
+        "ground_truth": "You should shut down the computer through the operating system before removing or inserting a hard drive.[cite: 1]",
+        "suggested_context": "Before removing or inserting a hard drive, shut down the computer. If you are unsure whether the computer is off or in Hibernation, turn the computer on, and then shut it down through the operating system.[cite: 1]"
+    },
+    {
+        "question": "What does the power button do when the laptop is in Hibernation?",
+        "ground_truth": "Briefly pressing the power button exits Hibernation.[cite: 1]",
+        "suggested_context": "Power button: When the computer is in Hibernation, press the button briefly to exit Hibernation.[cite: 1]"
+    },
+    {
+        "question": "What happens if you press and hold the power button down for at least 10 seconds?",
+        "ground_truth": "If the computer is unresponsive, holding the power button for at least 10 seconds will turn off the computer, resulting in the loss of unsaved information.[cite: 1]",
+        "suggested_context": "IMPORTANT: Pressing and holding down the power button results in the loss of unsaved information. If the computer has stopped responding and shutdown procedures are ineffective, press and hold the power button down for at least 10 seconds to turn off the computer.[cite: 1]"
+    },
+    {
+        "question": "What components must be removed before removing the RJ-45 board?",
+        "ground_truth": "You must first prepare for disassembly, remove the bottom cover, and disconnect the battery cable from the system board.[cite: 1]",
+        "suggested_context": "Before removing the RJ-45 board, follow these steps: 1. Prepare the computer for disassembly (see Preparation for disassembly on page 30). 2. Remove the bottom cover (see Bottom cover on page 34). 3. Disconnect the battery cable from the system board (see Battery on page 35).[cite: 1]"
+    },
+    {
+        "question": "What is the operating temperature range for the OMEN laptop?",
+        "ground_truth": "The operating temperature range is 5°C to 35°C (41°F to 95°F).[cite: 1]",
+        "suggested_context": "Temperature: Operating 5°C to 35°C (41°F to 95°F).[cite: 1]"
+    },
+    {
+        "question": "What is the weight of the OMEN 17.3 inch Gaming Laptop PC?",
+        "ground_truth": "The weight of the computer is 2953 g (6.51 lb).[cite: 1]",
+        "suggested_context": "Weight: 2953 g (6.51 lb).[cite: 1]"
+    },
+    {
+        "question": "What does a solid white RJ-45 (network) status light mean?",
+        "ground_truth": "A white light indicates that the network is connected.[cite: 1]",
+        "suggested_context": "RJ-45 (network) status lights: White: The network is connected.[cite: 1]"
+    },
+    {
+        "question": "How do you enable the fn lock feature on the keyboard?",
+        "ground_truth": "You can enable the fn lock feature by pressing the fn and shift keys together.[cite: 1]",
+        "suggested_context": "fn lock key: Pressing the fn+shift will enable the fn lock feature.[cite: 1]"
+    },
+    {
+        "question": "What tool should be used to create recovery media on a bootable USB flash drive?",
+        "ground_truth": "You should use the HP Cloud Recovery Download Tool.[cite: 1]",
+        "suggested_context": "Using the HP Cloud Recovery Download Tool to create recovery media (select products only). You can use the HP Cloud Recovery Download Tool to create HP Recovery media on a bootable USB flash drive.[cite: 1]"
+    },
+    {
+        "question": "What is the primary function of the HP PC Hardware Diagnostics UEFI?",
+        "ground_truth": "It allows you to run diagnostic tests to determine if computer hardware is functioning properly. It runs outside the operating system to isolate hardware failures from software issues.[cite: 1]",
+        "suggested_context": "HP PC Hardware Diagnostics Unified Extensible Firmware Interface (UEFI) allows you to run diagnostic tests to determine whether the computer hardware is functioning properly. The tool runs outside the operating system so that it can isolate hardware failures from issues that are caused by the operating system or other software components.[cite: 1]"
+    },
+    {
+        "question": "What is the maximum altitude for operating the laptop?",
+        "ground_truth": "The maximum operating altitude is 3,048 m (10,000 ft).[cite: 1]",
+        "suggested_context": "Maximum altitude (unpressurized): Operating -15 m to 3,048 m (-50 ft to 10,000 ft).[cite: 1]"
+    },
+    {
+        "question": "What should you do if the computer display is shipped in low blue light mode?",
+        "ground_truth": "No action is needed. The low blue light mode automatically adjusts blue light emissions for improved eye comfort and safety when reading or using the computer at night.[cite: 1]",
+        "suggested_context": "Your computer display is shipped from the factory in low blue light mode for improved eye comfort and safety. Also, blue light mode automatically adjusts blue light emissions when you are using the computer at night or for reading.[cite: 1]"
+    },
+    {
+        "question": "What is the spare part number for the 230 W slim Smart AC adapter?",
+        "ground_truth": "The spare part number is N22367-001.[cite: 1]",
+        "suggested_context": "AC adapter (230 W, smart, PFC, slim) spare part number: N22367-001.[cite: 1]"
+    },
+    {
+        "question": "Which key combination displays system information?",
+        "ground_truth": "Pressing the esc key in combination with the fn key displays system information.[cite: 1]",
+        "suggested_context": "esc key: Displays system information when pressed in combination with the fn key.[cite: 1]"
+    },
+    {
+        "question": "What does the OMEN key do?",
+        "ground_truth": "The OMEN key opens the OMEN Gaming Hub software.[cite: 1]",
+        "suggested_context": "OMEN key: Opens the OMEN Gaming Hub software.[cite: 1]"
+    },
+    {
+        "question": "What is the physical width of the OMEN 17.3 inch laptop?",
+        "ground_truth": "The width of the laptop is 397.5 mm (15.65 in).[cite: 1]",
+        "suggested_context": "Width: 397.5 mm (15.65 in).[cite: 1]"
+    },
+    {
+        "question": "What is the spare part number for the touchpad, including rubber?",
+        "ground_truth": "The spare part numbers are N96196xx1 through N96203-001.[cite: 1]",
+        "suggested_context": "Touchpad (Includes rubber) N96196xx1-N96203-001.[cite: 1]"
+    },
+    {
+        "question": "How do you change the computer's boot order for recovery?",
+        "ground_truth": "Insert the HP Recovery media, access the system Startup menu by pressing esc then f9, select the optical or USB drive, and follow the on-screen instructions.[cite: 1]",
+        "suggested_context": "To change the boot order: 1. Insert the HP Recovery media. 2. Access the system Startup menu. For computers or tablets with keyboards attached, turn on or restart the computer or tablet, quickly press esc, and then press f9 for boot options... 3. Select the optical drive or USB flash drive from which you want to boot...[cite: 1]"
+    },
+    {
+        "question": "What does HP Easy Clean do?",
+        "ground_truth": "It disables devices like the keyboard, touch screen, and touchpad for a preset time to help avoid accidental input while cleaning the computer.[cite: 1]",
+        "suggested_context": "HP Easy Clean helps you to avoid accidental input while you clean the computer surfaces. This software disables devices such as the keyboard, touch screen, and touchpad for a preset amount of time so that you can clean all computer surfaces.[cite: 1]"
+    },
+    {
+        "question": "How many screws are used to secure the bottom cover?",
+        "ground_truth": "The bottom cover is secured by four captive Phillips screws and four noncaptive Phillips M2.0x4.0 screws.[cite: 1]",
+        "suggested_context": "1. Loosen the four captive Phillips screws (1) from the bottom cover... 2. Remove the four noncaptive Phillips M2.0x4.0 screws (2) from the bottom cover.[cite: 1]"
+    },
+    {
+        "question": "What happens if an audio device is connected to the audio-out combo jack?",
+        "ground_truth": "When an external device is connected to the audio-out combo jack, the computer's internal speakers are disabled.[cite: 1]",
+        "suggested_context": "NOTE: When a device is connected to the jack, the computer speakers are disabled.[cite: 1]"
+    }
+]
