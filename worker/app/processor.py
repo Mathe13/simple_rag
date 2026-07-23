@@ -8,7 +8,7 @@ from langchain_postgres import PGVector
 # Import the modularized components
 from parsers.cleaner_parser import CleanerParser
 from parsers.layout_parser import LayoutParser
-from readers.docling_pdf_reader import Reader
+from readers.unstructured_pdf_reader import Reader
 from splitters.recursive_splitter import RecursiveSplitter
 
 # Configuration variables
@@ -45,8 +45,8 @@ def run_ingestion_pipeline():
         logger.info(f"Processing: {pdf_path.name}")
         
         # Pipeline execution
-        docling_doc = reader.extract_elements(file_str)
-        structured_data = layout_parser.group_elements(docling_doc)
+        unstructured_elements = reader.extract_elements(file_str)
+        structured_data = layout_parser.group_elements(unstructured_elements)
         cleaned_data = cleaner.clean(structured_data)
         file_chunks = splitter.split(cleaned_data, source_file=pdf_path.name)
         

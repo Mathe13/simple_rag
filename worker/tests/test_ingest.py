@@ -4,7 +4,7 @@ from pathlib import Path
 
 from parsers.cleaner_parser import CleanerParser
 from parsers.layout_parser import LayoutParser
-from readers.docling_pdf_reader import Reader
+from readers.unstructured_pdf_reader import Reader
 from splitters.recursive_splitter import RecursiveSplitter
 from processor import run_ingestion_pipeline
 
@@ -48,21 +48,20 @@ class TestLayoutParser:
         parser = LayoutParser()
 
         item1 = MagicMock()
-        item1.prov = [MagicMock(page_no=1)]
+        item1.metadata.page_number = 1
         item1.text = "Page 1 Line 1"
 
         item2 = MagicMock()
-        item2.prov = [MagicMock(page_no=1)]
+        item2.metadata.page_number = 1
         item2.text = "Page 1 Line 2"
 
         item3 = MagicMock()
-        item3.prov = [MagicMock(page_no=2)]
+        item3.metadata.page_number = 2
         item3.text = "Page 2 Line 1"
 
-        mock_doc = MagicMock()
-        mock_doc.texts = [item1, item2, item3]
+        elements = [item1, item2, item3]
 
-        grouped = parser.group_elements(mock_doc)
+        grouped = parser.group_elements(elements)
         assert len(grouped) == 2
         assert grouped[0] == {"page": 1, "content": "Page 1 Line 1\nPage 1 Line 2"}
         assert grouped[1] == {"page": 2, "content": "Page 2 Line 1"}
@@ -71,13 +70,12 @@ class TestLayoutParser:
         parser = LayoutParser()
 
         item1 = MagicMock()
-        item1.prov = []
+        item1.metadata.page_number = None
         item1.text = "Fallback line"
 
-        mock_doc = MagicMock()
-        mock_doc.texts = [item1]
+        elements = [item1]
 
-        grouped = parser.group_elements(mock_doc)
+        grouped = parser.group_elements(elements)
         assert len(grouped) == 1
         assert grouped[0] == {"page": 1, "content": "Fallback line"}
 
@@ -102,19 +100,15 @@ class TestRecursiveSplitter:
 
 
 class TestReader:
-    @patch("readers.docling_pdf_reader.DocumentConverter")
-    def test_extract_elements(self, mock_converter_class):
-        mock_converter_inst = MagicMock()
-        mock_converter_class.return_value = mock_converter_inst
-        mock_result = MagicMock()
-        mock_result.document = "mock_docling_doc"
-        mock_converter_inst.convert.return_value = mock_result
+    @patch("readers.unstructured_pdf_reader.partition_pdf")
+    def test_extract_elements(self, mock_partition_pdf):
+        mock_partition_pdf.return_value = ["mock_unstructured_element"]
 
         reader = Reader()
-        doc = reader.extract_elements("test.pdf")
+        elements = reader.extract_elements("test.pdf")
 
-        assert doc == "mock_docling_doc"
-        mock_converter_inst.convert.assert_called_once_with("test.pdf")
+        assert elements == ["mock_unstructured_element"]
+        mock_partition_pdf.assert_called_once_with(filename="test.pdf")
 
 
 class TestPipeline:
@@ -145,7 +139,7 @@ class TestPipeline:
 
         mock_reader = MagicMock()
         mock_reader_class.return_value = mock_reader
-        mock_reader.extract_elements.return_value = "docling_doc"
+        mock_reader.extract_elements.return_value = "unstructured_elements"
 
         mock_layout = MagicMock()
         mock_layout_parser_class.return_value = mock_layout
@@ -166,7 +160,7 @@ class TestPipeline:
         run_ingestion_pipeline()
 
         mock_reader.extract_elements.assert_called_once_with("/opt/data/test.pdf")
-        mock_layout.group_elements.assert_called_once_with("docling_doc")
+        mock_layout.group_elements.assert_called_once_with("unstructured_elements")
         mock_cleaner.clean.assert_called_once_with([{"page": 1, "content": "raw"}])
         mock_splitter.split.assert_called_once_with([{"page": 1, "content": "cleaned"}], source_file="test.pdf")
         mock_pgvector_class.assert_called_once()

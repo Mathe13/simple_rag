@@ -202,6 +202,8 @@ services:
   worker-image:
     build:
       context: ./worker
+      args:
+        - HF_TOKEN=${HF_TOKEN:-}
     image: simple_rag_worker:latest
     profiles: ["donotstart"]
 
