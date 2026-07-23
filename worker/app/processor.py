@@ -8,7 +8,7 @@ from langchain_postgres import PGVector
 # Import the modularized components
 from parsers.cleaner_parser import CleanerParser
 from parsers.layout_parser import LayoutParser
-from readers.unstructured_pdf_reader import Reader
+from readers.langchain_pdf_reader import Reader
 from splitters.recursive_splitter import RecursiveSplitter
 
 # Configuration variables

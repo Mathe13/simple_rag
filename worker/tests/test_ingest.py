@@ -4,7 +4,7 @@ from pathlib import Path
 
 from parsers.cleaner_parser import CleanerParser
 from parsers.layout_parser import LayoutParser
-from readers.unstructured_pdf_reader import Reader
+from readers.langchain_pdf_reader import Reader
 from splitters.recursive_splitter import RecursiveSplitter
 from processor import run_ingestion_pipeline
 
@@ -48,16 +48,16 @@ class TestLayoutParser:
         parser = LayoutParser()
 
         item1 = MagicMock()
-        item1.metadata.page_number = 1
-        item1.text = "Page 1 Line 1"
+        item1.metadata = {"page": 0}
+        item1.page_content = "Page 1 Line 1"
 
         item2 = MagicMock()
-        item2.metadata.page_number = 1
-        item2.text = "Page 1 Line 2"
+        item2.metadata = {"page": 0}
+        item2.page_content = "Page 1 Line 2"
 
         item3 = MagicMock()
-        item3.metadata.page_number = 2
-        item3.text = "Page 2 Line 1"
+        item3.metadata = {"page": 1}
+        item3.page_content = "Page 2 Line 1"
 
         elements = [item1, item2, item3]
 
@@ -70,8 +70,8 @@ class TestLayoutParser:
         parser = LayoutParser()
 
         item1 = MagicMock()
-        item1.metadata.page_number = None
-        item1.text = "Fallback line"
+        item1.metadata = {}
+        item1.page_content = "Fallback line"
 
         elements = [item1]
 
@@ -100,15 +100,18 @@ class TestRecursiveSplitter:
 
 
 class TestReader:
-    @patch("readers.unstructured_pdf_reader.partition_pdf")
-    def test_extract_elements(self, mock_partition_pdf):
-        mock_partition_pdf.return_value = ["mock_unstructured_element"]
+    @patch("readers.langchain_pdf_reader.PyPDFLoader")
+    def test_extract_elements(self, mock_pypdf_loader_class):
+        mock_loader_inst = MagicMock()
+        mock_pypdf_loader_class.return_value = mock_loader_inst
+        mock_loader_inst.load.return_value = ["mock_document"]
 
         reader = Reader()
         elements = reader.extract_elements("test.pdf")
 
-        assert elements == ["mock_unstructured_element"]
-        mock_partition_pdf.assert_called_once_with(filename="test.pdf")
+        assert elements == ["mock_document"]
+        mock_pypdf_loader_class.assert_called_once_with("test.pdf")
+        mock_loader_inst.load.assert_called_once()
 
 
 class TestPipeline:
