@@ -8,6 +8,7 @@ WORKDIR /app
 
 # Copy the requirements file and install dependencies
 COPY pyproject.toml .
+COPY uv.lock .
 RUN pip install --no-cache-dir uv && \
     uv sync --no-dev --no-cache
 

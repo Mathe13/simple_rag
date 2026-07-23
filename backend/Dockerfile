@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
+COPY uv.lock .
 RUN pip install --no-cache-dir uv && \
     uv sync --no-dev --no-cache
 

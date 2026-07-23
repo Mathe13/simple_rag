@@ -1,58 +1,191 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from pathlib import Path
 
-from ingest import ingest_and_vectorize_documents
+from parsers.cleaner_parser import CleanerParser
+from parsers.layout_parser import LayoutParser
+from readers.docling_pdf_reader import Reader
+from splitters.recursive_splitter import RecursiveSplitter
+from processor import run_ingestion_pipeline
 
-@patch("ingest.PGVector")
-@patch("ingest.OpenAIEmbeddings")
-@patch("ingest.RecursiveCharacterTextSplitter")
-@patch("ingest.PyPDFDirectoryLoader")
-def test_ingest_and_vectorize_documents(
-    mock_pdf_loader_class, 
-    mock_text_splitter_class,
-    mock_embeddings_class,
-    mock_pgvector_class
-):
-    # Setup mocks
-    mock_loader_instance = MagicMock()
-    mock_pdf_loader_class.return_value = mock_loader_instance
-    mock_loader_instance.load.return_value = ["doc1", "doc2"]
-    
-    mock_splitter_instance = MagicMock()
-    mock_text_splitter_class.return_value = mock_splitter_instance
-    mock_splitter_instance.split_documents.return_value = ["chunk1", "chunk2", "chunk3"]
-    
-    mock_vector_store_instance = MagicMock()
-    mock_pgvector_class.return_value = mock_vector_store_instance
 
-    # Run the function
-    ingest_and_vectorize_documents()
+class TestCleanerParser:
+    def test_clean_normal_text(self):
+        cleaner = CleanerParser()
+        data = [
+            {"page": 1, "content": "  Hello    world!  \n\n  This is a test.  "}
+        ]
+        cleaned = cleaner.clean(data)
+        assert len(cleaned) == 1
+        assert cleaned[0]["page"] == 1
+        assert cleaned[0]["content"] == "Hello world! This is a test."
 
-    # Assertions
-    mock_pdf_loader_class.assert_called_once_with("/opt/data")
-    mock_loader_instance.load.assert_called_once()
-    
-    mock_text_splitter_class.assert_called_once_with(
-        chunk_size=800,
-        chunk_overlap=150,
-        length_function=len,
-        add_start_index=True,
-    )
-    mock_splitter_instance.split_documents.assert_called_once_with(["doc1", "doc2"])
-    
-    mock_embeddings_class.assert_called_once()
-    
-    mock_pgvector_class.assert_called_once()
-    mock_vector_store_instance.add_documents.assert_called_once_with(["chunk1", "chunk2", "chunk3"])
+    def test_clean_removes_cjk_characters(self):
+        cleaner = CleanerParser()
+        data = [
+            {"page": 1, "content": "English text こんにちは 世界 Chinese 中文 text"}
+        ]
+        cleaned = cleaner.clean(data)
+        assert len(cleaned) == 1
+        assert "こんにちは" not in cleaned[0]["content"]
+        assert "中文" not in cleaned[0]["content"]
+        assert "English text" in cleaned[0]["content"]
 
-@patch("ingest.PyPDFDirectoryLoader")
-def test_ingest_and_vectorize_no_docs(mock_pdf_loader_class):
-    mock_loader_instance = MagicMock()
-    mock_pdf_loader_class.return_value = mock_loader_instance
-    # Simulate empty directory
-    mock_loader_instance.load.return_value = []
-    
-    # Should return early and not error
-    ingest_and_vectorize_documents()
-    
-    mock_loader_instance.load.assert_called_once()
+    def test_clean_filters_header_footer_page_numbers(self):
+        cleaner = CleanerParser()
+        data = [
+            {"page": 1, "content": "123"},
+            {"page": 2, "content": "Valid section content here."}
+        ]
+        cleaned = cleaner.clean(data)
+        assert len(cleaned) == 1
+        assert cleaned[0]["page"] == 2
+        assert cleaned[0]["content"] == "Valid section content here."
+
+
+class TestLayoutParser:
+    def test_group_elements(self):
+        parser = LayoutParser()
+
+        item1 = MagicMock()
+        item1.prov = [MagicMock(page_no=1)]
+        item1.text = "Page 1 Line 1"
+
+        item2 = MagicMock()
+        item2.prov = [MagicMock(page_no=1)]
+        item2.text = "Page 1 Line 2"
+
+        item3 = MagicMock()
+        item3.prov = [MagicMock(page_no=2)]
+        item3.text = "Page 2 Line 1"
+
+        mock_doc = MagicMock()
+        mock_doc.texts = [item1, item2, item3]
+
+        grouped = parser.group_elements(mock_doc)
+        assert len(grouped) == 2
+        assert grouped[0] == {"page": 1, "content": "Page 1 Line 1\nPage 1 Line 2"}
+        assert grouped[1] == {"page": 2, "content": "Page 2 Line 1"}
+
+    def test_group_elements_fallback_page(self):
+        parser = LayoutParser()
+
+        item1 = MagicMock()
+        item1.prov = []
+        item1.text = "Fallback line"
+
+        mock_doc = MagicMock()
+        mock_doc.texts = [item1]
+
+        grouped = parser.group_elements(mock_doc)
+        assert len(grouped) == 1
+        assert grouped[0] == {"page": 1, "content": "Fallback line"}
+
+
+class TestRecursiveSplitter:
+    @patch("splitters.recursive_splitter.RecursiveCharacterTextSplitter")
+    def test_split(self, mock_splitter_class):
+        mock_splitter_inst = MagicMock()
+        mock_splitter_class.return_value = mock_splitter_inst
+        mock_splitter_inst.split_documents.return_value = ["chunk1", "chunk2"]
+
+        splitter = RecursiveSplitter(chunk_size=500, chunk_overlap=50)
+        cleaned_data = [{"page": 1, "content": "Sample content for splitting."}]
+
+        chunks = splitter.split(cleaned_data, source_file="manual.pdf")
+        assert chunks == ["chunk1", "chunk2"]
+        mock_splitter_inst.split_documents.assert_called_once()
+        docs = mock_splitter_inst.split_documents.call_args[0][0]
+        assert len(docs) == 1
+        assert docs[0].page_content == "Sample content for splitting."
+        assert docs[0].metadata == {"source": "manual.pdf", "page": 1}
+
+
+class TestReader:
+    @patch("readers.docling_pdf_reader.DocumentConverter")
+    def test_extract_elements(self, mock_converter_class):
+        mock_converter_inst = MagicMock()
+        mock_converter_class.return_value = mock_converter_inst
+        mock_result = MagicMock()
+        mock_result.document = "mock_docling_doc"
+        mock_converter_inst.convert.return_value = mock_result
+
+        reader = Reader()
+        doc = reader.extract_elements("test.pdf")
+
+        assert doc == "mock_docling_doc"
+        mock_converter_inst.convert.assert_called_once_with("test.pdf")
+
+
+class TestPipeline:
+    @patch("processor.PGVector")
+    @patch("processor.OpenAIEmbeddings")
+    @patch("processor.RecursiveSplitter")
+    @patch("processor.CleanerParser")
+    @patch("processor.LayoutParser")
+    @patch("processor.Reader")
+    @patch("processor.Path")
+    def test_run_ingestion_pipeline_success(
+        self,
+        mock_path_class,
+        mock_reader_class,
+        mock_layout_parser_class,
+        mock_cleaner_class,
+        mock_splitter_class,
+        mock_embeddings_class,
+        mock_pgvector_class,
+    ):
+        mock_pdf = MagicMock(spec=Path)
+        mock_pdf.name = "test.pdf"
+        mock_pdf.__str__.return_value = "/opt/data/test.pdf"
+
+        mock_dir = MagicMock()
+        mock_dir.glob.return_value = [mock_pdf]
+        mock_path_class.return_value = mock_dir
+
+        mock_reader = MagicMock()
+        mock_reader_class.return_value = mock_reader
+        mock_reader.extract_elements.return_value = "docling_doc"
+
+        mock_layout = MagicMock()
+        mock_layout_parser_class.return_value = mock_layout
+        mock_layout.group_elements.return_value = [{"page": 1, "content": "raw"}]
+
+        mock_cleaner = MagicMock()
+        mock_cleaner_class.return_value = mock_cleaner
+        mock_cleaner.clean.return_value = [{"page": 1, "content": "cleaned"}]
+
+        mock_splitter = MagicMock()
+        mock_splitter_class.return_value = mock_splitter
+        mock_chunk = MagicMock()
+        mock_splitter.split.return_value = [mock_chunk]
+
+        mock_vector_store = MagicMock()
+        mock_pgvector_class.return_value = mock_vector_store
+
+        run_ingestion_pipeline()
+
+        mock_reader.extract_elements.assert_called_once_with("/opt/data/test.pdf")
+        mock_layout.group_elements.assert_called_once_with("docling_doc")
+        mock_cleaner.clean.assert_called_once_with([{"page": 1, "content": "raw"}])
+        mock_splitter.split.assert_called_once_with([{"page": 1, "content": "cleaned"}], source_file="test.pdf")
+        mock_pgvector_class.assert_called_once()
+        mock_vector_store.add_documents.assert_called_once_with([mock_chunk])
+
+    @patch("processor.PGVector")
+    @patch("processor.Reader")
+    @patch("processor.Path")
+    def test_run_ingestion_pipeline_no_pdfs(
+        self,
+        mock_path_class,
+        mock_reader_class,
+        mock_pgvector_class,
+    ):
+        mock_dir = MagicMock()
+        mock_dir.glob.return_value = []
+        mock_path_class.return_value = mock_dir
+
+        run_ingestion_pipeline()
+
+        mock_reader_class.assert_called_once()
+        mock_pgvector_class.assert_not_called()
