@@ -37,8 +37,13 @@
         *   `Dockerfile`
         *   `pyproject.toml`
     *   **`worker/`** - Manual ingestion worker
-        *   `ingest.py` - Local Python script for document loading & embedding
-        *   `pyproject.toml`
+        *   **`app/`**
+            *   **`parsers/`** - Layout and cleaner parsers
+            *   **`readers/`** - Langchain PDF reader
+            *   **`splitters/`** - Text chunk splitters
+            *   `processor.py` - Document loading & embedding pipeline
+        *   **`tests/`** - Pytest suite
+        *   `pyproject.toml` - uv package configuration
     *   **`data/`** - Source PDF documents
         *   `envy_user_guide.pdf`
         *   `omen_service_guide.pdf`
